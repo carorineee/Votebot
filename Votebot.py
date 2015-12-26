@@ -1,11 +1,37 @@
 import requests
+import unicodedata
 from bs4 import BeautifulSoup as Soup
+import Scraper
+import ast
 
-def get_proxies(): 
+
+def extract_tags(list, remove_stuff):
+	for tag in list:
+		if tag.name == 'style':
+			tag.extract()
+		if tag.has_attr('style') and tag['style'] == 'display:none':
+			tag.extract()
+		if tag.has_attr('class') and tag['class'][0] in remove_stuff:
+			tag.extract()
+		if list.count(tag) > 1:
+			tag.extract()
+		if not tag.text:
+			tag.extract()
+
+def get_proxies(x): 
 	proxy_request = requests.get('http://proxylist.hidemyass.com/search-1301708#listable')
+	souped = Soup(proxy_request.text, 'html.parser')
+	
+	row = souped.find('table', id='listable').find_all('tr', rel=True)[x].find_all('td')
+	port = row[2].text.strip()	
 
-	lepro = {'http': 'http://'}
-
+	remove1 = row[1].find_all('.(\w*){display:none}', row[1].span.style.text)
+	extract_tags(row[1].find_all('span'), remove1)
+	extract_tags(row[1].find_all('div'), remove1)
+	extract_tags(row[1].find_all('style'), remove1)
+	ip = row[1].text.strip()
+	
+	lepro = {'http' : ip + ':' + port}
 	return lepro
 
 
@@ -39,7 +65,7 @@ def send_vote(answer_id, poll_nonce, proxies):
 
 
 if __name__ == '__main__':
-	proxies = get_proxies()
+	proxies = get_proxies(0)
 	print 'Receiving data...'
 	answer, poll = get_data('Jimi Hendrix', proxies)
 	print 'Voting...'
